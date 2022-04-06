@@ -6,7 +6,7 @@ fileoutname = 'stake-values.csv'
 fileoutname_full = 'stake-values-fulldata.csv'
 fileoutname_tokens = 'stake-values-TokenList.csv'
 #-------------------------------   Send request to a web page and store Content in a variable   ------------------------------
-res = requests.get('https://www.binance.com/bapi/earn/v2/friendly/pos/union?pageSize=3&pageIndex=1&status=ALL')
+res = requests.get('https://www.binance.com/bapi/earn/v2/friendly/pos/union?pageSize=105&pageIndex=1&status=ALL')
 cont_res = res.content
 # ----------------------------- Cambiar tipo de separador a ser usado ---------------------------
 cont_res = str(cont_res).replace('"config":', '"config":,')
