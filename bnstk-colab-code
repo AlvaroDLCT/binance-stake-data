@@ -1,0 +1,72 @@
+import pandas as pd
+import requests
+
+#-------------------------------   Data in   ------------------------------
+fileoutname = 'stake-values.csv'
+fileoutname_full = 'stake-values-fulldata.csv'
+fileoutname_tokens = 'stake-values-TokenList.csv'
+#-------------------------------   Send request to a web page and store Content in a variable   ------------------------------
+res = requests.get('https://www.binance.com/bapi/earn/v2/friendly/pos/union?pageSize=3&pageIndex=1&status=ALL')
+cont_res = res.content
+# ----------------------------- Cambiar tipo de separador a ser usado ---------------------------
+cont_res = str(cont_res).replace('"config":', '"config":,')
+cont_res = str(cont_res).replace('[', ',')
+# # ----------------------------- Eliminar Caracteres Especiales  ---------------------------
+specialChars = ']"}{'
+for specialChar in specialChars:
+  cont_res = str(cont_res).replace(specialChar, '')
+
+fileout = open(fileoutname,'w')
+fileout.write(cont_res)
+fileout.close()
+# # ----------------------------- Trasponer datos de una fila a una columba ---------------------------
+fileout = open(fileoutname,'r')
+cont_res = pd.read_csv(fileout, sep = ',', header=None)
+cont_res = pd.DataFrame.transpose(cont_res)
+# # ----------------------------- Dividir ---------------------------
+cont_res = cont_res[0].str.split(':', expand=True)
+fileout.close()
+# --------------------------- hacer una copia con todo el contenido en un archivo de salida ---------------------------
+
+cont_res.to_csv(fileoutname_full,header=['Item','Value'])
+
+# ------------------------------- Filtrar/eliminar datos por ITEM --------------------
+del_char = pd.DataFrame({'del_char':['success' ,'dailyInterestRate' ,'interestPerUnit', "b'code" ,'id','status','displayPriority','upLimit','purchased','endTime','issueStartTime','issueEndTime','expectRedeemDate','withWhiteList','display','displayPriority','extraAnnualInterestRate','extraDailyInterestRate','chainProcessPeriod','redeemPeriod','payInterestPeriod','createTimestamp','selected']})
+
+for dcvalue in del_char.index:
+  dc_key = del_char['del_char'][dcvalue]
+  dc_idx = cont_res[cont_res[0]==dc_key].index
+  cont_res = cont_res.drop(dc_idx)
+
+#----------------------- Extract Token List-----------------------------------------
+token_idx = cont_res[cont_res[0]=='asset'].index
+token_list = cont_res.loc[token_idx]
+token_list = token_list.drop_duplicates()
+token_list = pd.DataFrame(token_list[:][1])
+
+token_list.to_csv(fileoutname_tokens,header=['Token'])
+
+# ------------------------------- Eliminar filas sin datos --------------------
+cont_res = cont_res[cont_res[0].notna()]
+null_idx=cont_res[cont_res[1]==""].index
+cont_res=cont_res.drop(null_idx)
+null_idx=cont_res[cont_res[1]=="null"].index
+cont_res=cont_res.drop(null_idx)
+asset_idx=cont_res[cont_res[0]=="asset"].index
+cont_res=cont_res.drop(asset_idx)
+
+#  ------------------------------- Cambiar datos en data frame (traducir titulos) --------------------
+
+cont_res=cont_res.replace(regex=['true'],value='Agotado')
+cont_res=cont_res.replace(regex=['false'],value='Disponible')
+change_char = pd.DataFrame({'change_char':['projectId','duration','annualInterestRate','minPurchaseAmount','maxPurchaseAmountPerUser','sellOut']})
+changew_char = pd.DataFrame({'changew_char':['Item','Stake Time [D]','APY','Dep_Min.','Dep_Max.','Estado']})
+
+for cha_val in change_char.index:
+    cont_res = cont_res.replace(regex=change_char.iloc[cha_val,0], value = changew_char.iloc[cha_val,0])
+
+cont_res = cont_res.reset_index()
+del(cont_res['index'])
+
+# # # ----------------------------- Guardar Archivo de resultados "CSV" ---------------------------
+cont_res.to_csv(fileoutname,header=['Item','Value']) #, index=False, )
